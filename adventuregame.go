@@ -81,7 +81,7 @@ func main() {
 
 	jsonErr := json.Unmarshal(data, &chapters)
 
-	if jsonErr != nil{
+	if jsonErr != nil {
 		log.Fatal(jsonErr)
 	}
 
