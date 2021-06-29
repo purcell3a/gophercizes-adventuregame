@@ -8,13 +8,23 @@ import (
 	"os"
 )
 
-var chapters Story
+type Intro struct {
+	Title   string   `json:"title"`
+	Story   []string `json:"story"`
+	Options []struct {
+		Text string `json:"text"`
+		Arc  string `json:"arc"`
+	} `json:"options"`
+} `json:"intro"`
 
-type Story struct {
-	Intro []string
-	NewYork []string
-	Debate []string
-}
+
+type Option struct {
+	OptionName string        `json:"option name"`
+	Title      string        `json:"title"`
+	Story      []string      `json:"story"`
+	Options    []interface{} `json:"options"`
+} `json:"option"`
+
 
 func main() {
 	jsonFile, err := os.Open("story.json")
