@@ -2,11 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"os"
-	"https://github.com/purcell3a/gophercizes-adventuregame.git"
-	"github.com/gophercises/cyoa"
 )
 
 var defaultHandlerTmpl = `json:"<!DOCTYPE html>
@@ -29,7 +28,8 @@ var defaultHandlerTmpl = `json:"<!DOCTYPE html>
             </li>
         </ul>
     </body>
-</html>"`
+
+	</html>"`
 
 type Story map[string]Chapter
 
@@ -45,39 +45,41 @@ type Option struct {
 }
 
 func main() {
-	filename := flag.String("file", "story.json", "the json file")
-	flag.Parse()
-	fmt.Printf("Using the story in %s. \n", *filename)
+	// filename := flag.String("file", "story.json", "the json file")
+	// flag.Parse()
+	// fmt.Printf("Using the story in %s. \n", *filename)
 
-	f, err := os.Open(*filename)
+	// f, err := os.Open(*filename)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// d := json.NewDecoder((f))
+	// var story cyoa.Story
+	// if err := d.Decode(&story); err != nil{
+	// 	panic(err)
+	// }
+	// fmt.Printf("%+v\n", story)
+	jsonFile, err := os.Open("story.json")
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
-	d := json.NewDecoder((f))
-	var story cyoa.Story
-	if err := d.Decode(&story); err != nil{
-		panic(err)
+	fmt.Println("running", jsonFile)
+
+	defer jsonFile.Close()
+
+	data, err := ioutil.ReadAll(jsonFile)
+
+	if err != nil {
+		log.Fatal(err)
 	}
-	fmt.Printf("%+v\n", story)
-	// jsonFile, err := os.Open("story.json")
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-	// fmt.Println("running", jsonFile)
 
-	// defer jsonFile.Close()
+	var story Story 
 
-	// data, err := ioutil.ReadAll(jsonFile)
+	jsonErr := json.Unmarshal(data, &story)
 
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// jsonErr := json.Unmarshal(data, &chapters)
-
-	// if jsonErr != nil {
-	// 	log.Fatal(jsonErr)
-	// }
-
-	// fmt.Println(chapters)
+	fmt.Println(story)
+	
+	if jsonErr != nil {
+		log.Fatal(jsonErr)
+	}
 }
