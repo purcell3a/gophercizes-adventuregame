@@ -12,6 +12,24 @@ import (
 	"text/template"
 )
 
+type Story map[string]Chapter
+
+type Chapter struct {
+	Title      string   `json:"title"`
+	Paragraphs []string `json:"story"`
+	Options    []Option `json:"options"`
+}
+
+type Option struct {
+	Text    string `json:"text"`
+	Chapter string `json:"arc"`
+}
+
+type handler struct {
+	s Story
+	t *template.Template
+}
+
 func init() {
 	tpl = template.Must(template.New("").Parse(defaultHandlerTmpl))
 }
@@ -32,30 +50,25 @@ var defaultHandlerTmpl = `<!DOCTYPE html>
         <ul>
             {{range .Options}}
             <li>
-                <a href="/{{.Chapter}}"></a>
-                {{.Text}}
+				<a href="/{{.Chapter}}">
+				{{.Text}}
+				</a>
             </li>
             {{end}}
         </ul>
     </body>
 </html>`
 
-// func NewHandler(s Story, tmpl *template.Template) http.Handler {
-// 	if tmpl == nil {
-// 		tmpl = tpl
-// 	}
-// 	return handler{s, tpl}
+func NewHandler(s Story, tmpl *template.Template) http.Handler {
+	if tmpl == nil {
+		tmpl = tpl
+	}
+	return handler{s, tpl}
+}
+
+// func NewHandler(s Story) http.Handler {
+// 	return handler{s}
 // }
-
-func NewHandler(s Story) http.Handler {
-	return handler{s}
-}
-
-type handler struct {
-	s Story
-	// t *template.Template
-}
-
 
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimSpace(r.URL.Path)
@@ -67,28 +80,14 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path = path[1:]
 
 	if chapter, ok := h.s[path]; ok {
-		err := tpl.Execute(w, chapter)
-		log.Printf("%v", err)
-		http.Error(w, "Something went wrong...", http.StatusInternalServerError)
+		err := h.t.Execute(w, chapter)
 		if err != nil {
-			panic(err)
+			log.Printf("%v", err)
+			http.Error(w, "Something went wrong...", http.StatusInternalServerError)
 		}
 		return
 	}
 	http.Error(w, "chapter not found.", http.StatusNotFound)
-}
-
-type Story map[string]Chapter
-
-type Chapter struct {
-	Title      string   `json:"title"`
-	Paragraphs []string `json:"story"`
-	Options    []Option `json:"options"`
-}
-
-type Option struct {
-	Text    string `json:"text"`
-	Chapter string `json:"arc"`
 }
 
 func main() {
@@ -115,7 +114,7 @@ func main() {
 		log.Fatal(jsonErr)
 	}
 
-	h := NewHandler(story)
+	h := NewHandler(story, tpl)
 	fmt.Printf("starting the on port: %d\n", *port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), h))
 }
