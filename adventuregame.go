@@ -2,14 +2,23 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
+	"strings"
+	"text/template"
 )
 
-var defaultHandlerTmpl = `json:"<!DOCTYPE html>
+func init() {
+	tpl = template.Must(template.New("").Parse(defaultHandlerTmpl))
+}
 
+var tpl *template.Template
+
+var defaultHandlerTmpl = `<!DOCTYPE html>
 <html>
     <head>
         <meta charset="utf-8" />
@@ -26,10 +35,48 @@ var defaultHandlerTmpl = `json:"<!DOCTYPE html>
                 <a href="/{{.Chapter}}"></a>
                 {{.Text}}
             </li>
+            {{end}}
         </ul>
     </body>
+</html>`
 
-	</html>"`
+// func NewHandler(s Story, tmpl *template.Template) http.Handler {
+// 	if tmpl == nil {
+// 		tmpl = tpl
+// 	}
+// 	return handler{s, tpl}
+// }
+
+func NewHandler(s Story) http.Handler {
+	return handler{s}
+}
+
+type handler struct {
+	s Story
+	// t *template.Template
+}
+
+
+func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimSpace(r.URL.Path)
+	//defualt to start of story if no path
+	if path == "" || path == "/" {
+		path = "/intro"
+	}
+
+	path = path[1:]
+
+	if chapter, ok := h.s[path]; ok {
+		err := tpl.Execute(w, chapter)
+		log.Printf("%v", err)
+		http.Error(w, "Something went wrong...", http.StatusInternalServerError)
+		if err != nil {
+			panic(err)
+		}
+		return
+	}
+	http.Error(w, "chapter not found.", http.StatusNotFound)
+}
 
 type Story map[string]Chapter
 
@@ -45,20 +92,8 @@ type Option struct {
 }
 
 func main() {
-	// filename := flag.String("file", "story.json", "the json file")
-	// flag.Parse()
-	// fmt.Printf("Using the story in %s. \n", *filename)
+	port := flag.Int("port", 3000, "the port to start the server")
 
-	// f, err := os.Open(*filename)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// d := json.NewDecoder((f))
-	// var story cyoa.Story
-	// if err := d.Decode(&story); err != nil{
-	// 	panic(err)
-	// }
-	// fmt.Printf("%+v\n", story)
 	jsonFile, err := os.Open("story.json")
 	if err != nil {
 		fmt.Println(err)
@@ -73,13 +108,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var story Story 
+	var story Story
 
 	jsonErr := json.Unmarshal(data, &story)
-
-	fmt.Println(story)
-	
 	if jsonErr != nil {
 		log.Fatal(jsonErr)
 	}
+
+	h := NewHandler(story)
+	fmt.Printf("starting the on port: %d\n", *port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), h))
 }
